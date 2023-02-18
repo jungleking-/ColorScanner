@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<title>Photo color test</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+<link href="https://getbootstrap.com/docs/4.0/examples/checkout/form-validation.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+  <div class="container">
+    <div>
+      <div><img src="images/Color.jpeg" class="img-fluid rounded" /></div>
+   </div>
+  <p id="status">OpenCV.js is loading...</p>
+
+  <div>
+    <div class="inputoutput">
+      <img id="imageSrc" alt="No Image"  style="width:300px; display:none;" />
+      <div class="caption"><input type="file" id="fileInput" name="file" /></div>
+    </div>
+    <div class="inputoutput">
+      <canvas id="canvasOutput"  style="width:300px;"></canvas>
+    </div>
+  </div>
+
+  <div>
+    <table class="table">
+      <thead>
+        <tr>
+          <th scope="col">Datetime</th>
+          <th scope="col">ファイル名</th>
+          <th scope="col">画像</th>
+          <th scope="col">推定含有量</th>
+        </tr>
+      </thead>
+      <tbody id="colorMatchValues">
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script type="text/javascript">
+let imgElement = document.getElementById('imageSrc');
+let inputElement = document.getElementById('fileInput');
+let enhance = 0.25;
+let id = 1;
+let lastFileName;
+
+inputElement.addEventListener('change', (e) => {
+  var file = e.target.files[0];
+  lastFileName = file.name;
+  imgElement.src = URL.createObjectURL(file);
+}, false);
+
+imgElement.onload = function() {
+  var src = cv.imread(imgElement);
+
+  var hsvReport = [];
+  for (var i = 0; i < 100; i++) {
+    hsvReport.push(0);
+  }
+
+  let dst = new cv.Mat();
+  cv.cvtColor(src, dst, cv.COLOR_RGB2HSV)
+  for (let i = 0; i < dst.rows * dst.cols * 3; i += 3)
+  {
+      var index = dst.data[i + 1];
+      hsvReport[index]++;
+  }
+  console.log(hsvReport);
+
+  var value = 0;
+  for (var i = hsvReport.length; i > 0; i--) {
+      if (hsvReport[i] > 100) {
+        value = i * enhance;
+        break;
+      }
+  }
+
+  var canvas = document.getElementById('canvasOutput');
+	var ctx = canvas.getContext('2d');
+
+  var colorMatchHTML = "";
+  var tr = document.createElement("tr");
+  tr.appendChild((function() {
+    var th = document.createElement("th");
+    th.setAttribute("scope", "row");
+    th.innerHTML = new Date().toLocaleString('ja-JP', {era:'long'});
+    return th;
+  })());
+  tr.appendChild((function() {
+    var td = document.createElement("td");
+    td.innerHTML = lastFileName;
+    return td;
+  })());
+  tr.appendChild((function() {
+    var td = document.createElement("td");
+    var canvas = document.createElement("canvas");
+    canvas.setAttribute("id", "canvas" + id);
+    td.appendChild(canvas);
+    return td;
+  })());
+  tr.appendChild((function() {
+    var td = document.createElement("td");
+    var div = document.createElement("div");
+    div.setAttribute("class", "ext-end");
+    div.innerHTML = value + "g";
+    td.appendChild(div);
+    return td;
+  })());
+  
+  document.getElementById("colorMatchValues").appendChild(tr);
+  cv.imshow('canvas' + id, src.clone());
+
+  id++;
+};
+
+var Module = {
+  onRuntimeInitialized() {
+    document.getElementById('status').innerHTML = 'OpenCV.js is ready.';
+  }
+};
+</script>
+<script async src="https://docs.opencv.org/3.4.0/opencv.js" type="text/javascript"></script>
+</body>
+</html>
