@@ -20,7 +20,7 @@
       <div class="caption"><input type="file" id="fileInput" name="file" /></div>
     </div>
     <div class="inputoutput">
-      <canvas id="canvasOutput"  style="width:300px;"></canvas>
+      <canvas id="canvasOutput" style="width:300px;"></canvas>
     </div>
   </div>
 
@@ -30,7 +30,8 @@
         <tr>
           <th scope="col">Datetime</th>
           <th scope="col">ファイル名</th>
-          <th scope="col">画像</th>
+          <th scope="col">元画像</th>
+          <th scope="col">解析画像</th>
           <th scope="col">推定含有量</th>
         </tr>
       </thead>
@@ -46,6 +47,7 @@ let inputElement = document.getElementById('fileInput');
 let enhance = 0.25;
 let id = 1;
 let lastFileName;
+let source;
 
 inputElement.addEventListener('change', (e) => {
   var file = e.target.files[0];
@@ -61,18 +63,37 @@ imgElement.onload = function() {
     hsvReport.push(0);
   }
 
+  var src2 = src.clone();
+  let width = 300;
   let dst = new cv.Mat();
-  cv.cvtColor(src, dst, cv.COLOR_RGB2HSV)
+  let aspect = src.size().width / width; 
+  let height = src.size().height / aspect;
+  let dsize = new cv.Size(width, height);
+  cv.resize(src, src2, dsize, 0, 0, cv.INTER_AREA);
+
+  let src3 = new cv.Mat();
+//  cv.medianBlur(src2, src3, 9);
+  src3 = src2.clone();
+
+  let half = 25;
+  let rect = new cv.Rect(150 - half, height / 2 - half, half * 2, half * 2);
+  var tri_src = src2.roi(rect);
+  cv.cvtColor(tri_src, dst, cv.COLOR_RGB2HSV);
   for (let i = 0; i < dst.rows * dst.cols * 3; i += 3)
   {
       var index = dst.data[i + 1];
+      if (index < 300) {
+        // dst.data[i] = 255;
+        // dst.data[i + 2] = 255;
+      }
       hsvReport[index]++;
   }
   console.log(hsvReport);
+//  cv.cvtColor(dst, src3, cv.COLOR_HSV2RGB);
 
   var value = 0;
   for (var i = hsvReport.length; i > 0; i--) {
-      if (hsvReport[i] > 100) {
+      if (hsvReport[i] > 5) {
         value = i * enhance;
         break;
       }
@@ -97,6 +118,13 @@ imgElement.onload = function() {
   tr.appendChild((function() {
     var td = document.createElement("td");
     var canvas = document.createElement("canvas");
+    canvas.setAttribute("id", "original_canvas" + id);
+    td.appendChild(canvas);
+    return td;
+  })());
+  tr.appendChild((function() {
+    var td = document.createElement("td");
+    var canvas = document.createElement("canvas");
     canvas.setAttribute("id", "canvas" + id);
     td.appendChild(canvas);
     return td;
@@ -110,11 +138,41 @@ imgElement.onload = function() {
     return td;
   })());
   
-  document.getElementById("colorMatchValues").appendChild(tr);
-  cv.imshow('canvas' + id, src.clone());
+  document.getElementById("colorMatchValues").prepend(tr);
+  cv.imshow('original_canvas' + id, src3);
+  cv.imshow('canvas' + id, tri_src);
 
+/*
+  const distMat = new cv.Mat();
+  const minMat = cv.matFromArray(
+    1,
+    3,
+    cv.CV_8UC1,
+    [1, 0, 1]
+  );
+  const maxMat = cv.matFromArray(
+    1,
+    3,
+    cv.CV_8UC1,
+    [255, 20, 255]
+  );
+
+  cv.cvtColor(src3, distMat, cv.COLOR_RGB2HSV_FULL);
+  cv.inRange(distMat, minMat, maxMat, distMat);
+  // cv.medianBlur(distMat, distMat, 3); 
+  cv.imshow('canvas' + id, distMat);
+ */
+
+  // outline(src3, "canvas" + id, width, height);
   id++;
 };
+
+function morphologyEx(src) {
+  var dst = new cv.Mat();
+  const kernelSize = cv.Mat.ones(5, 5, cv.CV_8U);
+  cv.morphologyEx(src, dst, cv.MORPH_CLOSE, kernelSize);
+  return dst;
+}
 
 var Module = {
   onRuntimeInitialized() {
