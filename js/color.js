@@ -37,22 +37,15 @@ imgElement.onload = function() {
   let dsize = new cv.Size(width, height);
   cv.resize(src, src2, dsize, 0, 0, cv.INTER_AREA);
 
+  // color clip
   var colorRect = rect(width / 2 - half, height / 2 - half, half * 2, half * 2);
   var colorData = roi('colorCanvas', colorRect, src2);
 
+  // white clip
   var whiteRect = rect(width / 2 - half, height - half * 2, half * 2, half * 2);
   var whiteData = roi('whiteCanvas', whiteRect, src2);
 
-  var rgbaTotalTable = rgbaTable(0, 0, 0, 0);
-
-  rgbaTotalTable.r = colorData.rgbaColorTable.r / whiteData.rgbaColorTable.r; // 1
-  rgbaTotalTable.b = colorData.rgbaColorTable.b / whiteData.rgbaColorTable.b; // 2
-  rgbaTotalTable.g = colorData.rgbaColorTable.g / whiteData.rgbaColorTable.g; // 3
-
-  var max = Math.max(rgbaTotalTable.r, rgbaTotalTable.g, rgbaTotalTable.b); // 4
-  var min = Math.min(rgbaTotalTable.r, rgbaTotalTable.g, rgbaTotalTable.b); // 5
-
-  var value = (max - min) / max;
+  var value = concentration(colorData, whiteData);
   value = value * enhance;
 
   var viewData = {
@@ -62,49 +55,15 @@ imgElement.onload = function() {
     "value":  value.toFixed(1) + "mg"    
   }
 
-  var tr = document.createElement("tr");
-  tr.appendChild((function() {
-    var th = document.createElement("th");
-    th.setAttribute("scope", "row");
-    th.innerHTML = viewData.date;
-    return th;
-  })());
-  tr.appendChild((function() {
-    var td = document.createElement("td");
-    td.innerHTML = viewData.lastFileName;
-    return td;
-  })());
-  tr.appendChild((function() {
-    var td = document.createElement("td");
-    var canvas = document.createElement("canvas");
-    canvas.setAttribute("id", "original_canvas" + viewData.id);
-    td.appendChild(canvas);
-    return td;
-  })());
-  tr.appendChild((function() {
-    var td = document.createElement("td");
-    var canvas = document.createElement("canvas");
-    canvas.setAttribute("id", "colorCanvas" + viewData.id);
-    td.appendChild(canvas);
-    return td;
-  })());
-  tr.appendChild((function() {
-    var td = document.createElement("td");
-    var canvas = document.createElement("canvas");
-    canvas.setAttribute("id", "whiteCanvas" + viewData.id);
-    td.appendChild(canvas);
-    return td;
-  })());
-  tr.appendChild((function() {
-    var td = document.createElement("td");
-    var div = document.createElement("div");
-    div.setAttribute("class", "ext-end");
-    div.innerHTML = viewData.value;
-    td.appendChild(div);
-    return td;
-  })());
+  var tr = $("<tr></tr>");
+  tr.append('<th scope="row">' + viewData.date + '</th>');
+  tr.append('<td>' + viewData.lastFileName + '</td>');
+  tr.append('<td><canvas id="original_canvas' + viewData.id + '"></canvas>');
+  tr.append('<td><canvas id="colorCanvas' + viewData.id + '"></canvas>');
+  tr.append('<td><canvas id="whiteCanvas' + viewData.id + '"></canvas>');
+  tr.append('<td><div class="ext-end">' + viewData.value + '</canvas>');
+  $("#colorMatchValues").append(tr);
   
-  document.getElementById("colorMatchValues").prepend(tr);
   cv.imshow('original_canvas' + id, src2);
   cv.imshow('colorCanvas' + id, colorData.material);
   cv.imshow('whiteCanvas' + id, whiteData.material);
@@ -112,10 +71,20 @@ imgElement.onload = function() {
   id++;
 };
 
+function concentration(colorData, whiteData) {
+  var rgbaTotalTable = rgbaTable(0, 0, 0, 0);
+  rgbaTotalTable.r = colorData.rgbaColorTable.r / whiteData.rgbaColorTable.r; // 1
+  rgbaTotalTable.b = colorData.rgbaColorTable.b / whiteData.rgbaColorTable.b; // 2
+  rgbaTotalTable.g = colorData.rgbaColorTable.g / whiteData.rgbaColorTable.g; // 3
+  var max = Math.max(rgbaTotalTable.r, rgbaTotalTable.g, rgbaTotalTable.b); // 4
+  var min = Math.min(rgbaTotalTable.r, rgbaTotalTable.g, rgbaTotalTable.b); // 5
+  var value = (max - min) / max;
+  return value;
+}
+
 function roi(canvasId, rect, material) {
   var canvas = document.getElementById(canvasId);
 	var context = canvas.getContext('2d', {willReadFrequently: true});
-
   let cvRect = new cv.Rect(rect.x, rect.y, rect.width, rect.height);
   var newMaterial = material.roi(cvRect);
   cv.imshow(canvasId, newMaterial);
@@ -153,6 +122,5 @@ function rgbaTable(r, g, b, count) {
 }
 
 var Module = {
-  onRuntimeInitialized() {
-  }
+  onRuntimeInitialized() {}
 };
