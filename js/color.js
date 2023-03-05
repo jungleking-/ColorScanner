@@ -10,6 +10,15 @@ let id = 1;
 let lastFileName;
 let source;
 
+let rect = function(x, y, width, height) {
+  return {
+    x: x,
+    y: y,
+    width: width,
+    height, height
+  }
+}
+
 inputElement.addEventListener('change', (e) => {
   var file = e.target.files[0];
   lastFileName = file.name;
@@ -18,14 +27,7 @@ inputElement.addEventListener('change', (e) => {
 
 imgElement.onload = function() {
   var src = cv.imread(imgElement);
-
-  var hsvReport = [];
-  for (var i = 0; i < 255; i++) {
-    hsvReport.push(0);
-  }
-
   var src2 = src.clone();
-  let dst = new cv.Mat();
   let aspect = src.size().width / width; 
   let height = src.size().height / aspect;
   if (src.size().width < width) {
@@ -35,119 +37,61 @@ imgElement.onload = function() {
   let dsize = new cv.Size(width, height);
   cv.resize(src, src2, dsize, 0, 0, cv.INTER_AREA);
 
-  let rect = new cv.Rect(width / 2 - half, height / 2 - half, half * 2, half * 2);
-  var tri_src = src2.roi(rect);
+  var colorRect = rect(width / 2 - half, height / 2 - half, half * 2, half * 2);
+  var colorData = roi('colorCanvas', colorRect, src2);
 
-  cv.imshow('colorCanvas', tri_src.clone());
+  var whiteRect = rect(width / 2 - half, height - half * 2, half * 2, half * 2);
+  var whiteData = roi('whiteCanvas', whiteRect, src2);
 
-  let src3 = new cv.Mat();
-  src3 = src2.clone();
-  var colorCanvas = document.getElementById('colorCanvas');
-	var colorCanvas_ctx = colorCanvas.getContext('2d', {willReadFrequently: true});
+  var rgbaTotalTable = rgbaTable(0, 0, 0, 0);
 
-  console.log(rect)
+  rgbaTotalTable.r = colorData.rgbaColorTable.r / whiteData.rgbaColorTable.r; // 1
+  rgbaTotalTable.b = colorData.rgbaColorTable.b / whiteData.rgbaColorTable.b; // 2
+  rgbaTotalTable.g = colorData.rgbaColorTable.g / whiteData.rgbaColorTable.g; // 3
 
-  var rgba_color_total_table = {
-    "r" : 0,
-    "g" : 0,
-    "b" : 0,
-    "count" : 0,
-  };
-
-  for (var x = 0; x < colorCanvas.width; x++) {
-    for (var y = 0; y < colorCanvas.height; y++) {
-      var imgData = colorCanvas_ctx.getImageData(x, y, 1, 1);
-      var rgba = imgData.data;
-      rgba_color_total_table.r += rgba[0];
-      rgba_color_total_table.g += rgba[1];
-      rgba_color_total_table.b += rgba[2];
-      rgba_color_total_table.count += 1;
-    }
-  }
-
-  rgba_color_total_table.r /= rgba_color_total_table.count;
-  rgba_color_total_table.g /= rgba_color_total_table.count;
-  rgba_color_total_table.b /= rgba_color_total_table.count;
-  
-  var rgba_white_total_table = {
-    "r" : 0,
-    "g" : 0,
-    "b" : 0,
-    "count" : 0,
-  };
-
-  var whiteCanvas = document.getElementById('whiteCanvas');
-	var whiteCanvas_ctx = whiteCanvas.getContext('2d', {willReadFrequently: true});
-
-  let white_dst = new cv.Mat();
-  let rect_white = new cv.Rect(width / 2 - half, height - half * 2, half * 2, half * 2);
-  var white_src = src2.roi(rect_white);
-  cv.imshow('whiteCanvas', white_src.clone());
-
-
-  for (var x = 0; x < whiteCanvas.width; x++) {
-    for (var y = 0; y < whiteCanvas.height; y++) {
-      var imgData = whiteCanvas_ctx.getImageData(x, y, 1, 1);
-      var rgba = imgData.data;
-      rgba_white_total_table.r += rgba[0];
-      rgba_white_total_table.g += rgba[1];
-      rgba_white_total_table.b += rgba[2];
-      rgba_white_total_table.count += 1;
-    }
-  }
-
-  rgba_white_total_table.r /= rgba_white_total_table.count;
-  rgba_white_total_table.g /= rgba_white_total_table.count;
-  rgba_white_total_table.b /= rgba_white_total_table.count;
-
-  var rgba_total_table = {
-    "r" : 0,
-    "g" : 0,
-    "b" : 0,
-    "count" : 0,
-  };
-
-  rgba_total_table.r = rgba_color_total_table.r / rgba_white_total_table.r; // 1
-  rgba_total_table.b = rgba_color_total_table.b / rgba_white_total_table.b; // 2
-  rgba_total_table.g = rgba_color_total_table.g / rgba_white_total_table.g; // 3
-
-  var max = Math.max(rgba_total_table.r, rgba_total_table.g, rgba_total_table.b); // 4
-  var min = Math.min(rgba_total_table.r, rgba_total_table.g, rgba_total_table.b); // 5
+  var max = Math.max(rgbaTotalTable.r, rgbaTotalTable.g, rgbaTotalTable.b); // 4
+  var min = Math.min(rgbaTotalTable.r, rgbaTotalTable.g, rgbaTotalTable.b); // 5
 
   var value = (max - min) / max;
   value = value * enhance;
 
-  var colorMatchHTML = "";
+  var viewData = {
+    "date": new Date().toLocaleString('ja-JP', {era:'long'}),
+    "fileName": lastFileName,
+    "id": id,
+    "value":  value.toFixed(1) + "mg"    
+  }
+
   var tr = document.createElement("tr");
   tr.appendChild((function() {
     var th = document.createElement("th");
     th.setAttribute("scope", "row");
-    th.innerHTML = new Date().toLocaleString('ja-JP', {era:'long'});
+    th.innerHTML = viewData.date;
     return th;
   })());
   tr.appendChild((function() {
     var td = document.createElement("td");
-    td.innerHTML = lastFileName;
+    td.innerHTML = viewData.lastFileName;
     return td;
   })());
   tr.appendChild((function() {
     var td = document.createElement("td");
     var canvas = document.createElement("canvas");
-    canvas.setAttribute("id", "original_canvas" + id);
+    canvas.setAttribute("id", "original_canvas" + viewData.id);
     td.appendChild(canvas);
     return td;
   })());
   tr.appendChild((function() {
     var td = document.createElement("td");
     var canvas = document.createElement("canvas");
-    canvas.setAttribute("id", "colorCanvas" + id);
+    canvas.setAttribute("id", "colorCanvas" + viewData.id);
     td.appendChild(canvas);
     return td;
   })());
   tr.appendChild((function() {
     var td = document.createElement("td");
     var canvas = document.createElement("canvas");
-    canvas.setAttribute("id", "whiteCanvas" + id);
+    canvas.setAttribute("id", "whiteCanvas" + viewData.id);
     td.appendChild(canvas);
     return td;
   })());
@@ -155,28 +99,60 @@ imgElement.onload = function() {
     var td = document.createElement("td");
     var div = document.createElement("div");
     div.setAttribute("class", "ext-end");
-    div.innerHTML = value.toFixed(1) + "g";
+    div.innerHTML = viewData.value;
     td.appendChild(div);
     return td;
   })());
   
   document.getElementById("colorMatchValues").prepend(tr);
-  cv.imshow('original_canvas' + id, src3);
-  cv.imshow('colorCanvas' + id, tri_src);
-  cv.imshow('whiteCanvas' + id, white_src);
+  cv.imshow('original_canvas' + id, src2);
+  cv.imshow('colorCanvas' + id, colorData.material);
+  cv.imshow('whiteCanvas' + id, whiteData.material);
 
   id++;
 };
 
-function morphologyEx(src) {
-  var dst = new cv.Mat();
-  const kernelSize = cv.Mat.ones(5, 5, cv.CV_8U);
-  cv.morphologyEx(src, dst, cv.MORPH_CLOSE, kernelSize);
-  return dst;
+function roi(canvasId, rect, material) {
+  var canvas = document.getElementById(canvasId);
+	var context = canvas.getContext('2d', {willReadFrequently: true});
+
+  let cvRect = new cv.Rect(rect.x, rect.y, rect.width, rect.height);
+  var newMaterial = material.roi(cvRect);
+  cv.imshow(canvasId, newMaterial);
+
+  var rgbaColorTable = rgbaTable(0, 0, 0, 0);
+  for (var x = 0; x < canvas.width; x++) {
+    for (var y = 0; y < canvas.height; y++) {
+      var imgData = context.getImageData(x, y, 1, 1);
+      var rgba = imgData.data;
+      rgbaColorTable.r += rgba[0];
+      rgbaColorTable.g += rgba[1];
+      rgbaColorTable.b += rgba[2];
+      rgbaColorTable.count += 1;
+    }
+  }
+
+  rgbaColorTable.r /= rgbaColorTable.count;
+  rgbaColorTable.g /= rgbaColorTable.count;
+  rgbaColorTable.b /= rgbaColorTable.count;  
+
+  return {
+    context: context,
+    material: newMaterial,
+    rgbaColorTable: rgbaColorTable
+  };
+}
+
+function rgbaTable(r, g, b, count) {
+  return {
+    "r" : r,
+    "g" : g,
+    "b" : b,
+    "count" : count,
+  };
 }
 
 var Module = {
   onRuntimeInitialized() {
-    document.getElementById('status').innerHTML = 'OpenCV.js is ready.';
   }
 };
