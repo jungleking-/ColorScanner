@@ -8,7 +8,6 @@ let width = 300;
 
 let id = 1;
 let lastFileName;
-let source;
 
 let rect = function(x, y, width, height) {
   return {
@@ -26,24 +25,15 @@ inputElement.addEventListener('change', (e) => {
 }, false);
 
 imgElement.onload = function() {
-  var src = cv.imread(imgElement);
-  var src2 = src.clone();
-  let aspect = src.size().width / width; 
-  let height = src.size().height / aspect;
-  if (src.size().width < width) {
-    width = src.size().width;
-    height = src.size().height;
-  }
-  let dsize = new cv.Size(width, height);
-  cv.resize(src, src2, dsize, 0, 0, cv.INTER_AREA);
+  var resizeData = resize();
 
   // color clip
-  var colorRect = rect(width / 2 - half, height / 2 - half, half * 2, half * 2);
-  var colorData = roi('colorCanvas', colorRect, src2);
+  var colorRect = rect(width / 2 - half, resizeData.height / 2 - half, half * 2, half * 2);
+  var colorData = roi('colorCanvas', colorRect, resizeData.material);
 
   // white clip
-  var whiteRect = rect(width / 2 - half, height - half * 2, half * 2, half * 2);
-  var whiteData = roi('whiteCanvas', whiteRect, src2);
+  var whiteRect = rect(width / 2 - half, resizeData.height - half * 2, half * 2, half * 2);
+  var whiteData = roi('whiteCanvas', whiteRect, resizeData.material);
 
   var value = concentration(colorData, whiteData);
   value = value * enhance;
@@ -52,24 +42,45 @@ imgElement.onload = function() {
     "date": new Date().toLocaleString('ja-JP', {era:'long'}),
     "fileName": lastFileName,
     "id": id,
-    "value":  value.toFixed(1) + "mg"    
+    "value":  value.toFixed(1) + "mg",
+    "resizeData": resizeData,
+    "colorData": colorData,
+    "whiteData": whiteData,
   }
 
   var tr = $("<tr></tr>");
   tr.append('<th scope="row">' + viewData.date + '</th>');
-  tr.append('<td>' + viewData.lastFileName + '</td>');
+  tr.append('<td>' + viewData.fileName + '</td>');
   tr.append('<td><canvas id="original_canvas' + viewData.id + '"></canvas>');
   tr.append('<td><canvas id="colorCanvas' + viewData.id + '"></canvas>');
   tr.append('<td><canvas id="whiteCanvas' + viewData.id + '"></canvas>');
   tr.append('<td><div class="ext-end">' + viewData.value + '</canvas>');
   $("#colorMatchValues").append(tr);
   
-  cv.imshow('original_canvas' + id, src2);
-  cv.imshow('colorCanvas' + id, colorData.material);
-  cv.imshow('whiteCanvas' + id, whiteData.material);
+  cv.imshow('original_canvas' + id, viewData.resizeData.material);
+  cv.imshow('colorCanvas' + id, viewData.colorData.material);
+  cv.imshow('whiteCanvas' + id, viewData.whiteData.material);
 
   id++;
 };
+
+function resize() {
+  var src = cv.imread(imgElement);
+  let aspect = src.size().width / width; 
+  let height = src.size().height / aspect;
+  if (src.size().width < width) {
+    width = src.size().width;
+    height = src.size().height;
+  }
+  let dsize = new cv.Size(width, height);
+  var material = new cv.Mat();
+  cv.resize(src, material, dsize, 0, 0, cv.INTER_AREA);
+  src.delete();
+  return {
+    height: height,
+    material: material
+  }
+}
 
 function concentration(colorData, whiteData) {
   var rgbaTotalTable = rgbaTable(0, 0, 0, 0);
