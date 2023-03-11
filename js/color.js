@@ -22,9 +22,24 @@ inputElement.addEventListener('change', (e) => {
   var file = e.target.files[0];
   lastFileName = file.name;
   imgElement.src = URL.createObjectURL(file);
+
+  validation();
 }, false);
 
-imgElement.onload = function() {
+function validation() {
+  var disabled = true;
+  if($("#label").val() != "" && $("#fileInput").prop("files").length > 0) {
+    disabled = false;
+  }
+
+  $("#submitButton").prop("disabled", disabled);
+}
+
+$("#label").change(function() {
+  validation();
+});
+
+$("#submitButton").click(function() {
   var resizeData = resize();
 
   // color clip
@@ -51,18 +66,33 @@ imgElement.onload = function() {
   var tr = $("<tr></tr>");
   tr.append('<th scope="row">' + viewData.date + '</th>');
   tr.append('<td>' + viewData.fileName + '</td>');
-  tr.append('<td><canvas id="original_canvas' + viewData.id + '"></canvas>');
-  tr.append('<td><canvas id="colorCanvas' + viewData.id + '"></canvas>');
-  tr.append('<td><canvas id="whiteCanvas' + viewData.id + '"></canvas>');
+  tr.append('<td><canvas id="debugOriginalCanvas' + viewData.id + '"></canvas>');
+  tr.append('<td><canvas id="debugColorCanvas' + viewData.id + '"></canvas>');
+  tr.append('<td><canvas id="debugWhiteCanvas' + viewData.id + '"></canvas>');
   tr.append('<td><div class="ext-end">' + viewData.value + '</canvas>');
-  $("#colorMatchValues").append(tr);
-  
-  cv.imshow('original_canvas' + id, viewData.resizeData.material);
-  cv.imshow('colorCanvas' + id, viewData.colorData.material);
-  cv.imshow('whiteCanvas' + id, viewData.whiteData.material);
+  $("#colorMatchValues").append(tr);  
 
+  var card = $("<div class='col'><div class='card'><div class='card-body'><h5 class='card-title'></h5><p class='card-text'></p></div><div class='card-footer'><small class='text-muted'>Last updated 3 mins ago</small></div></div></div>");
+  $(card).find(".card").prepend("<canvas class='card-img-top' id='originalCanvas" + viewData.id + "' height='300'></canvas>");
+  $(card).find(".card").append('<button type="button" class="btn btn-outline-danger deleteButton" data-mdb-ripple-color="dark">削除</button>');
+  $(card).find(".card-title").html($("#label").val());
+  $(card).find(".card-text").html(viewData.value);
+  $(card).find(".deleteButton").click(function () {
+      $(this).parent().parent().remove();
+  })
+  $("#cards").prepend(card);
+
+  cv.imshow('originalCanvas' + id, viewData.resizeData.material);
+  cv.imshow('debugOriginalCanvas' + id, viewData.resizeData.material);
+  cv.imshow('debugColorCanvas' + id, viewData.colorData.material);
+  cv.imshow('debugWhiteCanvas' + id, viewData.whiteData.material);
+
+  $("#label").val("");
+  $("#fileInput").val("");
+  validation();
+  
   id++;
-};
+});
 
 function resize() {
   var src = cv.imread(imgElement);
