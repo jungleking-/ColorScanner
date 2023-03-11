@@ -57,7 +57,7 @@ $("#submitButton").click(function() {
     "date": new Date().toLocaleString('ja-JP', {era:'long'}),
     "fileName": lastFileName,
     "id": id,
-    "value":  value.toFixed(1) + "mg",
+    "value":  "推定濃度 " + value.toFixed(1) + "mg/L",
     "resizeData": resizeData,
     "colorData": colorData,
     "whiteData": whiteData,
@@ -72,11 +72,13 @@ $("#submitButton").click(function() {
   tr.append('<td><div class="ext-end">' + viewData.value + '</canvas>');
   $("#colorMatchValues").append(tr);  
 
-  var card = $("<div class='col'><div class='card'><div class='card-body'><h5 class='card-title'></h5><p class='card-text'></p></div><div class='card-footer'><small class='text-muted'>Last updated 3 mins ago</small></div></div></div>");
+  var card = $("<div class='col'><div class='card'><div class='card-body'><h5 class='card-title'></h5><p class='card-text'></p></div><div class='card-footer'><small class='timezone text-muted'></small></div></div></div>");
   $(card).find(".card").prepend("<canvas class='card-img-top' id='originalCanvas" + viewData.id + "' height='300'></canvas>");
   $(card).find(".card").append('<button type="button" class="btn btn-outline-danger deleteButton" data-mdb-ripple-color="dark">削除</button>');
   $(card).find(".card-title").html($("#label").val());
   $(card).find(".card-text").html(viewData.value);
+  $(card).find(".card-text").html(viewData.value);
+  $(card).find(".timezone").html(new Date().toLocaleString('ja-JP', {era:'long'}));
   $(card).find(".deleteButton").click(function () {
       $(this).parent().parent().remove();
   })
@@ -90,7 +92,7 @@ $("#submitButton").click(function() {
   $("#label").val("");
   $("#fileInput").val("");
   validation();
-  
+
   id++;
 });
 
