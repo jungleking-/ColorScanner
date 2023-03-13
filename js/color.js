@@ -167,3 +167,11 @@ function rgbaTable(r, g, b, count) {
 var Module = {
   onRuntimeInitialized() {}
 };
+
+$(function() {
+  var reg = /jungleking-.github.io/;
+  console.log(reg.test(document.URL));
+  if (reg.test(document.URL)) {
+    $("#debugTable").hide();
+  }
+});
